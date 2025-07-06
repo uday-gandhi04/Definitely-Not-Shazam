@@ -1,33 +1,47 @@
-import json
-import os
+from pymongo import MongoClient
 from fingerprint import generate_hashes, generate_constellation_map
+import json
 
-songsMeta = {}
-hashIndex = {}
+# Connect to MongoDB
+client = MongoClient("mongodb://localhost:27017/")
+db = client["shazam_db"]
+songs_collection = db["songs"]
+hashes_collection = db["hashes"]
 
-with open('songs_meta.json', 'r', encoding='utf-8') as f:
-    songsMeta = json.load(f)
+# Load song metadata
+with open("songs_meta.json", "r", encoding="utf-8") as f:
+    songs_meta = json.load(f)
 
-"""with open('hash_index.json', 'r', encoding='utf-8') as f:
-    hashIndex = json.load(f)"""
+for song_id, song in songs_meta.items():
+    if not song.get("hash_generated", False):
+        print(f"Processing: {song['title']}")
 
-hash_file = "hash_index.json"
-if os.path.exists(hash_file) and os.path.getsize(hash_file) > 0:
-    with open(hash_file, "r", encoding="utf-8") as f:
-        songs_meta = json.load(f)
-
-for song in songsMeta.values():
-    if not song["hash_generated"]:
+        # Generate constellation map and hashes
         constellation_map = generate_constellation_map(song["location"])
         hashes = generate_hashes(constellation_map)
-        song["hash_generated"]= True
-        for h,t in hashes:
-            if h not in hashIndex:
-                hashIndex[h]=[(song["title"],t)]
-            else:
-                hashIndex[h].append((song["title"], t))
 
-with open('hash_index.json', 'w', encoding='utf-8') as f:
-    json.dump(hashIndex, f, indent=4)
-with open('songs_meta.json', 'w', encoding='utf-8') as f:
-    json.dump(songsMeta, f, indent=4)
+        # Insert hashes into DB
+        for h, t in hashes:
+            hashes_collection.insert_one({
+                "hash": h,
+                "time": t,
+                "title": song["title"]
+            })
+
+        # Update song document in MongoDB
+        songs_collection.update_one(
+            {"title": song["title"]},
+            {"$set": {
+                "artist": song["artist"],
+                "location": song["location"],
+                "hash_generated": True
+            }},
+            upsert=True
+        )
+
+        # Also update in the local copy so we can save back to JSON if needed
+        song["hash_generated"] = True
+
+# Optional: Save updated metadata locally too (if you're keeping the file for any reason)
+with open("songs_meta.json", "w", encoding="utf-8") as f:
+    json.dump(songs_meta, f, indent=4, ensure_ascii=False)
