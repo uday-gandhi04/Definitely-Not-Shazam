@@ -1,22 +1,22 @@
-import hashlib
 import numpy as np
 import librosa
 from scipy.ndimage import maximum_filter, gaussian_filter
 from fingerprint import generate_hashes
-import json
+
+from pymongo import MongoClient
+
+client = MongoClient("mongodb://localhost:27017/")
+db=client["shazam_db"]
+songs_collection=db["songs"]
+hashes_collection=db["hashes"]
+
 
 def SearchSong(songLocation):
     """
     Search for a song by title and artist.
     Returns the fingerprints if found, else None.
     """
-    hashIndex={}
-    with open("hash_index.json") as f:
-        hashIndex=json.load(f)
-    songsMeta={}
-
-    with open ("songs_meta.json") as f:
-        songsMeta=json.load(f)
+    # Step 1: Load the song
 
     y, sr = librosa.load(songLocation, sr=None)
 
@@ -52,8 +52,11 @@ def SearchSong(songLocation):
     score={
     }
     for h,t_query in fingerprint:
-        if h in hashIndex:
-            for (song,t_db) in hashIndex[h]:
+        hashIndex = hashes_collection.find({"hash": h})
+        if hashIndex:
+            for doc in hashIndex:
+                t_db= doc['time']
+                song = doc['title']
                 delta= round(t_db-t_query, 2)
                 score[(song,delta)] = score.get((song,delta), 0) + 1
     best_match = None
@@ -65,11 +68,15 @@ def SearchSong(songLocation):
             best_score = count
     
 
-    return best_match, songsMeta[best_match] if best_match else None
+    return best_match, songs_collection.find_one({"title":best_match}) if best_match else None
 
 if __name__ =="__main__":
     songAddr="songs\\Radiohead - No Surprises.mp3"
 
     best_match,songsMeta=SearchSong(songAddr)
-    print(songsMeta['title'])
-    print(songsMeta['artist'])
+    print()
+    if songsMeta:
+        print(songsMeta['title'])
+        print(songsMeta['artist'])
+    else:
+        print("No match found.")
