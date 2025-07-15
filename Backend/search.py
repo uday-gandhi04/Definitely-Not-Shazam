@@ -2,6 +2,7 @@ import numpy as np
 import librosa
 from scipy.ndimage import maximum_filter, gaussian_filter
 from fingerprint import generate_hashes
+from collections import defaultdict
 
 from pymongo import MongoClient
 
@@ -10,6 +11,7 @@ db=client["shazam_db"]
 songs_collection=db["songs"]
 hashes_collection=db["hashes"]
 
+hashes_collection.create_index("hash")
 
 def SearchSong(songLocation):
     """
@@ -51,19 +53,22 @@ def SearchSong(songLocation):
     fingerprint = generate_hashes(constellation_map)
     score={
     }
-    print(f"Total hashes generated from query: {len(fingerprint)}")
-    match_count = 0
-    for h, t_query in fingerprint:
-        hash_docs = list(hashes_collection.find({"hash": h}))
-        if hash_docs:
-            match_count += 1
-            for doc in hash_docs:
-                t_db = doc['time']
-                song = doc['title']
-                delta = round(t_db - t_query, 2)
-                score[(song, delta)] = score.get((song, delta), 0) + 1
-    print(f"Hashes matched in DB: {match_count}")
 
+    hashes = []
+    hash_tquery = defaultdict(list)
+
+    for h, t in fingerprint:
+        hashes.append(h)
+        hash_tquery[h].append(t)
+
+    hash_docs=hashes_collection.find({"hash":{"$in":hashes}},{"hash":1,"time":1,"title":1,"_id":0})
+    
+    for doc in hash_docs:
+        t_db = doc['time']
+        song = doc['title']
+        for t_query in hash_tquery[doc['hash']]:
+            delta = round(t_db - t_query, 2)
+            score[(song, delta)] = score.get((song, delta), 0) + 1
     best_match = None
     best_score = 0
 
@@ -76,7 +81,7 @@ def SearchSong(songLocation):
     return best_match, songs_collection.find_one({"title":best_match}) if best_match else None
 
 if __name__ =="__main__":
-    songAddr="..\\Testsongs\\Namami Shamishan (mp3cut.net).mp3"
+    songAddr="..\\Testsongs\\Madira Noisy.mp3"
 
     best_match,songsMeta=SearchSong(songAddr)
     print()
