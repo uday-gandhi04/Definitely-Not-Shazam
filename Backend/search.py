@@ -51,14 +51,19 @@ def SearchSong(songLocation):
     fingerprint = generate_hashes(constellation_map)
     score={
     }
-    for h,t_query in fingerprint:
-        hashIndex = hashes_collection.find({"hash": h})
-        if hashIndex:
-            for doc in hashIndex:
-                t_db= doc['time']
+    print(f"Total hashes generated from query: {len(fingerprint)}")
+    match_count = 0
+    for h, t_query in fingerprint:
+        hash_docs = list(hashes_collection.find({"hash": h}))
+        if hash_docs:
+            match_count += 1
+            for doc in hash_docs:
+                t_db = doc['time']
                 song = doc['title']
-                delta= round(t_db-t_query, 2)
-                score[(song,delta)] = score.get((song,delta), 0) + 1
+                delta = round(t_db - t_query, 2)
+                score[(song, delta)] = score.get((song, delta), 0) + 1
+    print(f"Hashes matched in DB: {match_count}")
+
     best_match = None
     best_score = 0
 
@@ -71,12 +76,13 @@ def SearchSong(songLocation):
     return best_match, songs_collection.find_one({"title":best_match}) if best_match else None
 
 if __name__ =="__main__":
-    songAddr="songs\\Radiohead - No Surprises.mp3"
+    songAddr="..\\Testsongs\\Namami Shamishan (mp3cut.net).mp3"
 
     best_match,songsMeta=SearchSong(songAddr)
     print()
     if songsMeta:
-        print(songsMeta['title'])
-        print(songsMeta['artist'])
+        print("Title ",songsMeta["title"])
+        print("Artist ",songsMeta["artist"])
+        print("YouTube URL: ", songsMeta["youtube_url"])
     else:
         print("No match found.")

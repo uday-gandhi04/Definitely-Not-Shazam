@@ -1,13 +1,22 @@
 import os
-import json
 import re
 from yt_dlp import YoutubeDL
+from pymongo import MongoClient
 
-# Step 1: Create a valid filename function
+# MongoDB Setup
+client = MongoClient("mongodb://localhost:27017/")
+db = client["shazam_db"]
+songs_collection = db["songs"]
+
+# Function to clean filenames
 def clean_filename(name):
     return re.sub(r'[\\/*?:"<>|]', "", name)
 
-# Step 4: Define progress hook
+# Output directory
+output_dir = "songs"
+os.makedirs(output_dir, exist_ok=True)
+
+# Progress hook to handle each downloaded song
 def progress_hook(d):
     if d['status'] == 'finished':
         info = d['info_dict']
@@ -15,6 +24,7 @@ def progress_hook(d):
         artist = info.get('uploader', 'Unknown Artist')
         video_id = info.get('id')
         ext = info.get('ext', 'mp3')
+        webpage_url = info.get('webpage_url', '')
 
         safe_title = clean_filename(title)
         filename = f"{safe_title}.mp3"
@@ -24,14 +34,20 @@ def progress_hook(d):
         if os.path.exists(original_path):
             os.rename(original_path, final_path)
 
-        # Add or update song metadata
-        songs_meta[safe_title] = {
-            "title": title,
-            "artist": artist,
-            "location": final_path
-        }
+        # Insert or update song in MongoDB
+        songs_collection.update_one(
+            {"title": safe_title},
+            {"$set": {
+                "title": safe_title,
+                "artist": artist,
+                "location": final_path,
+                "youtube_url": webpage_url,
+                "hash_generated": False
+            }},
+            upsert=True
+        )
 
-# Step 5: Define YT-DLP options
+# YT-DLP options
 def get_yt_dlp_opts():
     return {
         'format': 'bestaudio/best',
@@ -47,27 +63,9 @@ def get_yt_dlp_opts():
         'outtmpl': '%(id)s.%(ext)s',
     }
 
-# Step 6: Start download
+# Playlist URL
 playlist_url = "https://youtube.com/playlist?list=PLwi5bnlaFJvjbnvBu4aLwuGkQH4F45nUO"
 
 if __name__ == "__main__":
-
-    # Step 2: Prepare metadata dictionary
-    songs_meta = {}
-
-    # Load existing metadata if present
-    meta_file = "songs_meta.json"
-    if os.path.exists(meta_file):
-        with open(meta_file, "r", encoding="utf-8") as f:
-            songs_meta = json.load(f)
-
-    # Step 3: Define output directory
-    output_dir = "songs"
-    os.makedirs(output_dir, exist_ok=True)
-
     with YoutubeDL(get_yt_dlp_opts()) as ydl:
         ydl.download([playlist_url])
-
-    # Step 7: Save updated metadata
-    with open(meta_file, "w", encoding="utf-8") as f:
-        json.dump(songs_meta, f, indent=4, ensure_ascii=False)
