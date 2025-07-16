@@ -1,75 +1,74 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import ResultCard from './ResultCard'; // Ensure this matches the actual file casing exactly
 
 export default function RecordButton() {
   const [recording, setRecording] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
 
-  const startRecording = async () => {
+  const recordFor10Seconds = async () => {
+    setRecording(true);
     setError('');
     setResult(null);
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      const audioChunks = [];
 
-      recorder.ondataavailable = (e) => chunks.push(e.data);
-      recorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        const formData = new FormData();
-        formData.append('file', blob, 'recording.webm');
-
-        try {
-          const res = await axios.post('http://localhost:5000/api/upload', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-          });
-          console.log('Response:', res.data);
-          if (res.data && res.data.title) {
-            setResult(res.data);
-          } else {
-            setError('No match found.');
-          }
-        } catch (err) {
-          console.error(err);
-          setError(err.response?.data?.error || 'An error occurred.');
-        } finally {
-          setRecording(false);
-        }
+      mediaRecorder.ondataavailable = event => {
+        audioChunks.push(event.data);
       };
 
-      recorder.start();
-      setRecording(true);
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'recording.mp3');
 
-      // Auto-stop after 5 seconds
+        try {
+          const response = await axios.post('http://localhost:5000/api/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+
+          const data = response.data;
+          if (data.length === 0) {
+            setResult("No match found.");
+          } else if (data[0].confidence >= 90) {
+            setResult(<ResultCard song={data[0]} />);
+          } else {
+            setResult(data.map((song, index) => (
+              <ResultCard key={index} song={song} />
+            )));
+          }
+        } catch (err) {
+          setError('Error uploading audio.');
+        }
+        setRecording(false);
+      };
+
+      mediaRecorder.start();
+
+      // Stop after 10 seconds
       setTimeout(() => {
-        recorder.stop();
-      }, 5000);
+        mediaRecorder.stop();
+        stream.getTracks().forEach(track => track.stop());
+      }, 10000);
 
     } catch (err) {
-      console.error(err);
       setError('Microphone access denied or not available.');
+      setRecording(false);
     }
   };
 
   return (
-    <div>
-      <h2>🎤 Record Using Mic</h2>
-      <button onClick={startRecording} disabled={recording}>
-        {recording ? 'Recording…' : 'Start Recording'}
+    <div className="record-button">
+      <h3>🎤 Record Using Mic</h3>
+      <button onClick={recordFor10Seconds} disabled={recording}>
+        {recording ? "Recording (10s)..." : "Start 10-Second Recording"}
       </button>
-
       {error && <p style={{ color: 'red' }}>{error}</p>}
-
-      {result && (
-        <div style={{ marginTop: '1rem' }}>
-          <h3>Match Found:</h3>
-          <p><strong>{result.title}</strong> by {result.artist}</p>
-          <a href={result.youtube_url} target="_blank" rel="noopener noreferrer">
-            Watch on YouTube
-          </a>
-        </div>
-      )}
+      {result && <div>{result}</div>}
     </div>
   );
 }

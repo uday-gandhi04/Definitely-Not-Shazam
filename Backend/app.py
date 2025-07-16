@@ -1,8 +1,10 @@
-import os
 from flask import Flask, request, jsonify
-from search import SearchSong
+from flask_cors import CORS
+from search import SearchSong 
+import os
 
 app = Flask(__name__)
+CORS(app)     # Enable CORS for all routes
 
 @app.route("/api/upload", methods=["POST"])
 def upload():
@@ -19,15 +21,15 @@ def upload():
 
     try:
         # Perform search
-        match_title, metadata = SearchSong(filename)
+        metadata = SearchSong(filename)
 
         if metadata:
-            response = {
-                "match": match_title,
-                "title": metadata["title"],
-                "artist": metadata["artist"],
-                "youtube_url": metadata["youtube_url"]
-            }
+            response = [{
+                "title": song["title"],
+                "artist": song["artist"],
+                "youtube_url": song["youtube_url"],
+                "confidence": song["confidence"]
+            } for song in metadata]
         else:
             response = {"match": None}
 
@@ -37,3 +39,6 @@ def upload():
             os.remove(filename)
 
     return jsonify(response)
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)

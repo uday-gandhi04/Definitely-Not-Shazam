@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import ResultCard from './ResultCard'; // Ensure this matches the actual file casing exactly
 
 export default function UploadForm() {
   const [file, setFile] = useState(null);
@@ -9,9 +10,11 @@ export default function UploadForm() {
 
   const handleUpload = async () => {
     if (!file) return;
+
     setLoading(true);
     setError('');
     setResult(null);
+
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -20,47 +23,34 @@ export default function UploadForm() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      console.log('Response:', res.data);
-      if (res.data && res.data.title) {
-        setResult(res.data);
+      const data = res.data;
+
+      if (data.length === 0) {
+        setResult("No match found.");
+      } else if (data[0].confidence >= 90) {
+        setResult(<ResultCard song={data[0]} />);
       } else {
-        setError('No match found.');
+        setResult(data.map((song, index) => (
+          <ResultCard key={index} song={song} />
+        )));
       }
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.error || 'An error occurred.');
+      setError("An error occurred during upload.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ marginBottom: '2rem' }}>
+    <div>
       <h2>🎵 Upload a Song Clip</h2>
-      <input
-        type="file"
-        accept="audio/*"
-        onChange={(e) => {
-          setFile(e.target.files[0]);
-          setResult(null);
-          setError('');
-        }}
-      />
-      <button onClick={handleUpload} disabled={loading || !file} style={{ marginLeft: '10px' }}>
-        {loading ? 'Processing…' : 'Search'}
+      <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+      <button onClick={handleUpload} disabled={loading}>
+        {loading ? "Searching..." : "Search"}
       </button>
-
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-
-      {result && (
-        <div style={{ marginTop: '1rem' }}>
-          <h3>Match Found:</h3>
-          <p><strong>{result.title}</strong> by {result.artist}</p>
-          <a href={result.youtube_url} target="_blank" rel="noopener noreferrer">
-            Watch on YouTube
-          </a>
-        </div>
-      )}
+      {error && <p style={{ color: "red" }}>{error}</p>}
+      <div>{result}</div>
     </div>
   );
 }
