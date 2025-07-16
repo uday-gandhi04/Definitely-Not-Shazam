@@ -15,8 +15,6 @@ hashes_collection.create_index(
 
 for song in songs_collection.find():
     if not song.get("hash_generated", False):
-        print(f"Processing: {song['title']}")
-
         # Generate constellation map and hashes
         constellation_map = generate_constellation_map(song["location"])
         hashes = generate_hashes(constellation_map)

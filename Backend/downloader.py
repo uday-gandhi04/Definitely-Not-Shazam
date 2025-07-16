@@ -22,30 +22,39 @@ def progress_hook(d):
         info = d['info_dict']
         title = info.get('title', 'Unknown Title')
         artist = info.get('uploader', 'Unknown Artist')
-        video_id = info.get('id')
+        video_id = info.get('id')  # Unique YouTube ID
         ext = info.get('ext', 'mp3')
         webpage_url = info.get('webpage_url', '')
 
         safe_title = clean_filename(title)
         filename = f"{safe_title}.mp3"
-        original_path = f"{video_id}.{ext}"
         final_path = os.path.join(output_dir, filename)
 
+        # Check if file already exists and is hashed
+        existing_song = songs_collection.find_one({"video_id": video_id})
+        if os.path.exists(final_path) and existing_song and existing_song.get("hash_generated", False):
+            print(f"✅ Skipping '{safe_title}' — already downloaded and indexed.")
+            return
+
+        # Rename file if needed
+        original_path = f"{video_id}.{ext}"
         if os.path.exists(original_path):
             os.rename(original_path, final_path)
 
         # Insert or update song in MongoDB
         songs_collection.update_one(
-            {"title": safe_title},
+            {"video_id": video_id},
             {"$set": {
                 "title": safe_title,
                 "artist": artist,
                 "location": final_path,
                 "youtube_url": webpage_url,
+                "video_id": video_id,
                 "hash_generated": False
             }},
             upsert=True
         )
+        print(f"🎵 Processed: {safe_title}")
 
 # YT-DLP options
 def get_yt_dlp_opts():
@@ -63,8 +72,8 @@ def get_yt_dlp_opts():
         'outtmpl': '%(id)s.%(ext)s',
     }
 
-# Playlist URL
-playlist_url = "https://youtube.com/playlist?list=PLwi5bnlaFJvjbnvBu4aLwuGkQH4F45nUO"
+# Playlist or video URL
+playlist_url = "https://youtube.com/playlist?list=PLwi5bnlaFJvi9VOGV9btK0vHREbYi9PmZ&si=TrXWaso_hXc73zNH"
 
 if __name__ == "__main__":
     with YoutubeDL(get_yt_dlp_opts()) as ydl:

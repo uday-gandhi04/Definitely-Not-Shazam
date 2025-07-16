@@ -1,0 +1,25 @@
+NotShazam/
+├── Backend/
+│   ├── app.py                    # Flask API entry point (for search and upload)
+│   ├── downloader.py            # Downloads YouTube songs & stores metadata
+│   ├── index.py                 # Fingerprints songs and updates MongoDB
+│   ├── search.py                # Search for a song using its audio
+│   ├── fingerprint.py           # Contains generate_hashes and generate_constellation_map
+│   ├── songs/                   # Folder where downloaded songs are stored
+│   ├── .env                     # Environment variables (Mongo URI etc.)
+│   └── requirements.txt         # All backend dependencies
+│
+├── Frontend/
+│   ├── public/
+│   │   └── index.html           # Main HTML
+│   ├── src/
+│   │   ├── App.jsx              # Main React component
+│   │   ├── components/
+│   │   │   ├── UploadForm.jsx   # Upload and result display
+│   │   └── api.js               # Axios instance for API calls
+│   ├── .env                     # REACT_APP_API_URL=http://localhost:5000
+│   ├── package.json             # React dependencies
+│   └── tailwind.config.js       # (optional) Tailwind config
+│
+├── README.md
+└── .gitignore
