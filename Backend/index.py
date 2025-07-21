@@ -13,8 +13,8 @@ hashes_collection.create_index(
     unique=True
 )
 
-for song in songs_collection.find():
-    if not song.get("hash_generated", False):
+def index_new_songs():
+    for song in songs_collection.find({"hash_generated": False}):
         # Generate constellation map and hashes
         constellation_map = generate_constellation_map(song["location"])
         hashes = generate_hashes(constellation_map)
@@ -37,6 +37,5 @@ for song in songs_collection.find():
                 "hash_generated": True
             }},
         )
-
-
-
+if __name__ == "__main__":
+    index_new_songs()

@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from search import SearchSong 
+from downloader import download_youtube_url
+from index import index_new_songs
 import os
 
 app = Flask(__name__)
@@ -39,6 +41,26 @@ def upload():
             os.remove(filename)
 
     return jsonify(response)
+
+
+
+@app.route("/api/contribute", methods=["POST"])
+def contribute():
+    data = request.get_json()
+    url = data.get("url")
+
+    if not url:
+        return jsonify({"status": "error", "message": "No URL provided"}), 400
+
+    try:
+        print(f"Downloading from URL: {url}")
+        download_youtube_url(url)
+        print("Download complete, indexing new songs...")
+        index_new_songs()
+        return jsonify({"status": "success", "message": "Thanks for your contribution!"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

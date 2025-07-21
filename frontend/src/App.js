@@ -1,6 +1,7 @@
 import React from 'react';
 import UploadForm from './components/UploadForm';
 import RecordButton from './components/RecordButton';
+import ContributeForm from './components/ContributeForm';
 
 function App() {
   return (
@@ -10,6 +11,8 @@ function App() {
       <UploadForm />
       <hr style={{ margin: '2rem 0' }} />
       <RecordButton />
+      <hr style={{ margin: '2rem 0' }} />
+      <ContributeForm />
     </div>
   );
 }

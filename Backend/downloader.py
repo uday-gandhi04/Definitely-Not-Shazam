@@ -22,39 +22,40 @@ def progress_hook(d):
         info = d['info_dict']
         title = info.get('title', 'Unknown Title')
         artist = info.get('uploader', 'Unknown Artist')
-        video_id = info.get('id')  # Unique YouTube ID
+        video_id = info.get('id')  # Only used temporarily
         ext = info.get('ext', 'mp3')
         webpage_url = info.get('webpage_url', '')
 
         safe_title = clean_filename(title)
-        filename = f"{safe_title}.mp3"
-        final_path = os.path.join(output_dir, filename)
+        final_path = os.path.join(output_dir, f"{safe_title}.mp3")
+        original_path = f"{video_id}.{ext}"
 
-        # Check if file already exists and is hashed
-        existing_song = songs_collection.find_one({"video_id": video_id})
+        # If already exists and hashed, skip
+        existing_song = songs_collection.find_one({"title": safe_title})
         if os.path.exists(final_path) and existing_song and existing_song.get("hash_generated", False):
-            print(f"✅ Skipping '{safe_title}' — already downloaded and indexed.")
+            print(f"✅ Skipping '{safe_title}' — already exists and indexed.")
+            # Cleanup: remove the duplicate .webm if it exists
+            if os.path.exists(original_path):
+                os.remove(original_path)
             return
 
-        # Rename file if needed
-        original_path = f"{video_id}.{ext}"
-        if os.path.exists(original_path):
+        # Rename only if not already present
+        if os.path.exists(original_path) and not os.path.exists(final_path):
             os.rename(original_path, final_path)
 
-        # Insert or update song in MongoDB
+        # Insert or update song in MongoDB (without video_id)
         songs_collection.update_one(
-            {"video_id": video_id},
+            {"title": safe_title},
             {"$set": {
                 "title": safe_title,
                 "artist": artist,
                 "location": final_path,
                 "youtube_url": webpage_url,
-                "video_id": video_id,
                 "hash_generated": False
             }},
             upsert=True
         )
-        print(f"🎵 Processed: {safe_title}")
+        print(f"🎵 Processed and saved: {safe_title}")
 
 # YT-DLP options
 def get_yt_dlp_opts():
@@ -73,8 +74,12 @@ def get_yt_dlp_opts():
     }
 
 # Playlist or video URL
-playlist_url = "https://youtube.com/playlist?list=PLwi5bnlaFJvi9VOGV9btK0vHREbYi9PmZ&si=TrXWaso_hXc73zNH"
+playlist_url = "https://music.youtube.com/watch?v=AIRcFM2iEVs"
 
 if __name__ == "__main__":
     with YoutubeDL(get_yt_dlp_opts()) as ydl:
         ydl.download([playlist_url])
+
+def download_youtube_url(url):
+    with YoutubeDL(get_yt_dlp_opts()) as ydl:
+        ydl.download([url])
