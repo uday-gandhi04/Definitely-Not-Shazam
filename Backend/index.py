@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 from fingerprint import generate_hashes, generate_constellation_map
 from pymongo.errors import DuplicateKeyError
+import os
 
 # Connect to MongoDB
 client = MongoClient("mongodb://localhost:27017/")
@@ -12,6 +13,8 @@ hashes_collection.create_index(
     [("hash", 1), ("time", 1), ("title", 1)],
     unique=True
 )
+
+DELETE_SONG_AFTER_HASHING = True
 
 def index_new_songs():
     for song in songs_collection.find({"hash_generated": False}):
@@ -37,5 +40,12 @@ def index_new_songs():
                 "hash_generated": True
             }},
         )
+
+        try:
+            if DELETE_SONG_AFTER_HASHING and os.path.exists(song["location"]):
+                os.remove(song["location"])
+        except Exception as e:
+            print(f"Error deleting file {song['location']}: {e}")
+
 if __name__ == "__main__":
     index_new_songs()
