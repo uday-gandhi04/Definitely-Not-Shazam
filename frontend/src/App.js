@@ -1,20 +1,32 @@
-import React from 'react';
-import UploadForm from './components/UploadForm';
-import RecordButton from './components/RecordButton';
-import ContributeForm from './components/ContributeForm';
+import ContributeForm from "./components/ContributeForm"
+import RecordButton from "./components/RecordButton"
+import UploadForm from "./components/UploadForm"
+import "./styles.css"
 
-function App() {
+export default function HomePage() {
   return (
-    <div style={{ textAlign: 'center', padding: '2rem' }}>
-      <h1>🔍 NotShazam</h1>
-      <p>Identify any song from a clip or mic recording</p>
-      <UploadForm />
-      <hr style={{ margin: '2rem 0' }} />
-      <RecordButton />
-      <hr style={{ margin: '2rem 0' }} />
-      <ContributeForm />
-    </div>
-  );
-}
+    <div className="app-container">
+      <div className="main-content-area">
+        <div className="header-section">
+          <h1 className="main-title">
+            <span className="icon">🎵</span>NotShazam
+          </h1>
+          <p className="subtitle">Discover any song instantly with our advanced audio recognition technology</p>
+        </div>
 
-export default App;
+        <RecordButton />
+
+        <hr className="section-separator" />
+
+        <div className="cards-grid">
+          <UploadForm />
+          <div id="contribute-section">
+            <ContributeForm />
+          </div>
+        </div>
+
+        
+      </div>
+    </div>
+  )
+}
