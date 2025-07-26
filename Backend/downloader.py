@@ -4,7 +4,7 @@ from yt_dlp import YoutubeDL
 from pymongo import MongoClient
 
 # MongoDB Setup
-client = MongoClient("mongodb://localhost:27017/")
+client = MongoClient(os.environ.get("MONGO_URI"))
 db = client["shazam_db"]
 songs_collection = db["songs"]
 

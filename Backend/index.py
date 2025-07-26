@@ -4,7 +4,7 @@ from pymongo.errors import DuplicateKeyError
 import os
 
 # Connect to MongoDB
-client = MongoClient("mongodb://localhost:27017/")
+client = MongoClient(os.environ.get("MONGO_URI"))
 db = client["shazam_db"]
 songs_collection = db["songs"]
 hashes_collection = db["hashes"]

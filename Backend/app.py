@@ -49,6 +49,7 @@ def contribute():
     data = request.get_json()
     url = data.get("url")
 
+    url=url.split("&")[0] # Remove any additional parameters from the URL
     if not url:
         return jsonify({"status": "error", "message": "No URL provided"}), 400
 
