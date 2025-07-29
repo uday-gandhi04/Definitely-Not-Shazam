@@ -9,7 +9,7 @@ export default function HomePage() {
       <div className="main-content-area">
         <div className="header-section">
           <h1 className="main-title">
-            <span className="icon">🎵</span>NotShazam
+            {/* {<span className="icon">🎵</span>*/}NotShazam 
           </h1>
           <p className="subtitle">Discover any song instantly with our advanced audio recognition technology</p>
         </div>
